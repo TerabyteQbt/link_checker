@@ -1,0 +1,38 @@
+#!/usr/bin/env python
+
+import os
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+
+JAVA_CLASS="qbt.fringe.link_checker.Main"
+
+release_base=os.path.dirname(os.path.dirname(os.path.realpath(sys.argv[0])))
+java_tmpdir=tempfile.mkdtemp(prefix="wg")
+try:
+    javahome=os.getenv("JAVA_HOME")
+    if not javahome:
+        sys.stderr.write("JAVA_HOME must be set\n")
+        sys.exit(1)
+    opts=os.getenv("WRAPPER_GENERATOR_JVM_OPTS")
+    if opts:
+        optsl = shlex.split(opts)
+    else:
+        optsl = []
+    cmd = [javahome + "/bin/java"] + optsl + [
+        "-Djava.io.tmpdir=" + java_tmpdir,
+        "-classpath",
+        javahome + "/lib/tools.jar:" + release_base + "/lib/*",
+        JAVA_CLASS] + sys.argv[1:]
+    p = subprocess.Popen(cmd)
+    while(1):
+        try:
+            p.wait()
+            break
+        except KeyboardInterrupt, e:
+            pass
+    sys.exit(p.returncode)
+finally:
+    shutil.rmtree(java_tmpdir)
