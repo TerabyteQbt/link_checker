@@ -18,7 +18,7 @@ public abstract class ClassReaderHelper {
         for(String ifaceName : cr.getInterfaces()) {
             onInherits(classNameSlashed, ifaceName);
         }
-        ClassVisitor cv = new ClassVisitor(Opcodes.ASM4) {
+        ClassVisitor cv = new ClassVisitor(Opcodes.ASM5) {
             private String ownerFromDesc(String desc) {
                 Type descType = Type.getType(desc);
                 if(descType.getSort() != Type.OBJECT) {
@@ -79,7 +79,7 @@ public abstract class ClassReaderHelper {
             @Override
             public MethodVisitor visitMethod(int access, String methodName, String methodDesc, String signature, String[] exceptions) {
                 onProvides(className, Member.method((access & Opcodes.ACC_STATIC) != 0, methodDesc, methodName));
-                return new MethodVisitor(Opcodes.ASM4) {
+                return new MethodVisitor(Opcodes.ASM5) {
                     @Override
                     public void visitFieldInsn(int opcode, String owner, String name, String desc) {
                         onUses(className, owner, Member.field(desc, name));
@@ -93,7 +93,7 @@ public abstract class ClassReaderHelper {
                     }
 
                     @Override
-                    public void visitMethodInsn(int opcode, String owner, String name, String desc) {
+                    public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
                         onUses(className, owner, Member.method(opcode == Opcodes.INVOKESTATIC, desc, name));
                     }
                 };
