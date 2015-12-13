@@ -17,22 +17,27 @@ import java.util.List;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import misc1.commons.options.HelpOptionsFragment;
 import misc1.commons.options.NamedBooleanFlagOptionsFragment;
 import misc1.commons.options.NamedStringListArgumentOptionsFragment;
 import misc1.commons.options.OptionsFragment;
 import misc1.commons.options.OptionsResults;
+import misc1.commons.options.SimpleMain;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 
-public class Main {
+public class Main extends SimpleMain<Main.Options, Exception> {
     public static interface Options {
         public static final OptionsFragment<Options, ?, ImmutableList<String>> checks = new NamedStringListArgumentOptionsFragment<Options>(ImmutableList.of("--check"), "Check this jar/class");
         public static final OptionsFragment<Options, ?, ImmutableList<String>> libs = new NamedStringListArgumentOptionsFragment<Options>(ImmutableList.of("--lib"), "Parse this jar/class as a required library but do not check it");
         public static final OptionsFragment<Options, ?, ImmutableList<String>> whitelistFrom = new NamedStringListArgumentOptionsFragment<Options>(ImmutableList.of("--whitelistFrom"), "Whitelist calls from this prefix");
         public static final OptionsFragment<Options, ?, ImmutableList<String>> whitelistTo = new NamedStringListArgumentOptionsFragment<Options>(ImmutableList.of("--whitelistTo"), "Whitelist calls to this prefix");
         public static final OptionsFragment<Options, ?, Boolean> qbtDefaults = new NamedBooleanFlagOptionsFragment<Options>(ImmutableList.of("--qbtDefaults"), "Configure check and lib from QBT artifacts directories");
-        public static final OptionsFragment<Options, ?, ?> help = new HelpOptionsFragment<Options>(ImmutableList.of("-h", "--help"), "Show help");
+        public static final OptionsFragment<Options, ?, ?> help = simpleHelpOption();
+    }
+
+    @Override
+    protected Class<Options> getOptionsClass() {
+        return Options.class;
     }
 
     private static class Parser {
@@ -180,8 +185,11 @@ public class Main {
     }
 
     public static void main(String[] args) throws Exception {
-        OptionsResults<Options> o = OptionsResults.simpleParse(Options.class, "link_checker", args);
+        new Main().exec(args);
+    }
 
+    @Override
+    public int run(OptionsResults<Options> o) throws Exception {
         Parser p = new Parser();
         for(String check : o.get(Options.checks)) {
             p.check(check);
@@ -253,9 +261,13 @@ public class Main {
                 ++errors;
             }
         }
-        System.out.println("Completed link checking of " + p.checked.size() + " classes, processed " + p.found.size() + " classes total, resulted in " + errors + " errors");
-        if(errors != 0) {
-            System.exit(1);
+        if(errors > 0) {
+            System.out.println("Link checking complete with " + errors + " errors.");
+            return 1;
+        }
+        else {
+            System.out.println("Link checking complete without errors.");
+            return 0;
         }
     }
 
