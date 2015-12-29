@@ -110,8 +110,7 @@ public class Main extends SimpleMain<Main.Options, Exception> {
 
         private void common(String arg, ClassReaderHelper crh) throws IOException {
             if(arg.endsWith(".jar")) {
-                final ZipFile zf = new ZipFile(arg);
-                try {
+                try(ZipFile zf = new ZipFile(arg)) {
                     Enumeration<? extends ZipEntry> en = zf.entries();
                     while(en.hasMoreElements()) {
                         final ZipEntry ze = en.nextElement();
@@ -124,9 +123,6 @@ public class Main extends SimpleMain<Main.Options, Exception> {
                             }.read());
                         }
                     }
-                }
-                finally {
-                    zf.close();
                 }
                 return;
             }
