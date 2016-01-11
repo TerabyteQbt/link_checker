@@ -17,9 +17,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import misc1.commons.options.NamedBooleanFlagOptionsFragment;
-import misc1.commons.options.NamedStringListArgumentOptionsFragment;
 import misc1.commons.options.OptionsFragment;
+import misc1.commons.options.OptionsLibrary;
 import misc1.commons.options.OptionsResults;
 import misc1.commons.options.SimpleMain;
 import org.apache.commons.lang3.tuple.Pair;
@@ -27,12 +26,13 @@ import org.apache.commons.lang3.tuple.Triple;
 
 public class Main extends SimpleMain<Main.Options, Exception> {
     public static interface Options {
-        public static final OptionsFragment<Options, ?, ImmutableList<String>> checks = new NamedStringListArgumentOptionsFragment<Options>(ImmutableList.of("--check"), "Check this jar/class");
-        public static final OptionsFragment<Options, ?, ImmutableList<String>> libs = new NamedStringListArgumentOptionsFragment<Options>(ImmutableList.of("--lib"), "Parse this jar/class as a required library but do not check it");
-        public static final OptionsFragment<Options, ?, ImmutableList<String>> whitelistFrom = new NamedStringListArgumentOptionsFragment<Options>(ImmutableList.of("--whitelistFrom"), "Whitelist calls from this prefix");
-        public static final OptionsFragment<Options, ?, ImmutableList<String>> whitelistTo = new NamedStringListArgumentOptionsFragment<Options>(ImmutableList.of("--whitelistTo"), "Whitelist calls to this prefix");
-        public static final OptionsFragment<Options, ?, Boolean> qbtDefaults = new NamedBooleanFlagOptionsFragment<Options>(ImmutableList.of("--qbtDefaults"), "Configure check and lib from QBT artifacts directories");
-        public static final OptionsFragment<Options, ?, ?> help = simpleHelpOption();
+        public static final OptionsLibrary<Options> o = OptionsLibrary.of();
+        public static final OptionsFragment<Options, ImmutableList<String>> checks = o.oneArg("check").helpDesc("Check this jar/class");
+        public static final OptionsFragment<Options, ImmutableList<String>> libs = o.oneArg("lib").helpDesc("Parse this jar/class as a required library but do not check it");
+        public static final OptionsFragment<Options, ImmutableList<String>> whitelistFrom = o.oneArg("whitelistFrom").helpDesc("Whitelist calls from this prefix");
+        public static final OptionsFragment<Options, ImmutableList<String>> whitelistTo = o.oneArg("whitelistTo").helpDesc("Whitelist calls to this prefix");
+        public static final OptionsFragment<Options, Boolean> qbtDefaults = o.zeroArg("qbtDefaults").transform(o.flag()).helpDesc("Configure check and lib from QBT artifacts directories");
+        public static final OptionsFragment<Options, ?> help = simpleHelpOption();
     }
 
     @Override
