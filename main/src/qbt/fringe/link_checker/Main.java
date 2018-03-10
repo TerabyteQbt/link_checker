@@ -40,6 +40,33 @@ public class Main extends SimpleMain<Main.Options, Exception> {
         return Options.class;
     }
 
+    private static class Stats {
+        public int jars;
+        public int classes;
+        public int refs;
+        public int whitelists;
+        public int errors;
+
+        public int exitCode() {
+            return (errors > 0) ? 1 : 0;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append(jars).append(" jar(s)");
+            sb.append(", ").append(classes).append(" class(es)");
+            sb.append(", ").append(refs).append(" reference(s)");
+            if(whitelists > 0) {
+                sb.append(", ").append(whitelists).append(" whitelisted");
+            }
+            if(errors > 0) {
+                sb.append(", ").append(errors).append(" error(s)");
+            }
+            return sb.toString();
+        }
+    }
+
     private static class Parser {
         private final ImmutableSet.Builder<Pair<String, Member>> providesBuilder = ImmutableSet.builder();
         private final ImmutableMultimap.Builder<String, String> immediateSupersBuilder = ImmutableMultimap.builder();
@@ -47,7 +74,11 @@ public class Main extends SimpleMain<Main.Options, Exception> {
         private final Set<String> found = Sets.newHashSet();
         private final Set<String> checked = Sets.newHashSet();
         private final Set<String> missing = Sets.newHashSet();
-        private int errors = 0;
+        private final Stats stats;
+
+        public Parser(Stats stats) {
+            this.stats = stats;
+        }
 
         protected final ClassReaderHelper checkClassReader = new ClassReaderHelper() {
             @Override
@@ -110,11 +141,13 @@ public class Main extends SimpleMain<Main.Options, Exception> {
 
         private void common(String arg, ClassReaderHelper crh) throws IOException {
             if(arg.endsWith(".jar")) {
+                ++stats.jars;
                 try(ZipFile zf = new ZipFile(arg)) {
                     Enumeration<? extends ZipEntry> en = zf.entries();
                     while(en.hasMoreElements()) {
                         final ZipEntry ze = en.nextElement();
                         if(ze.getName().endsWith(".class")) {
+                            ++stats.classes;
                             crh.readClass(new ByteSource() {
                                 @Override
                                 public InputStream openStream() throws IOException {
@@ -128,6 +161,7 @@ public class Main extends SimpleMain<Main.Options, Exception> {
             }
 
             if(arg.endsWith(".class")) {
+                ++stats.classes;
                 crh.readClass(Files.toByteArray(new File(arg)));
                 return;
             }
@@ -171,7 +205,7 @@ public class Main extends SimpleMain<Main.Options, Exception> {
                         // whitelisting.
 
                         //System.out.println("Couldn't find class " + clazz);
-                        //++errors;
+                        //++stats.errors;
                         continue;
                     }
                     libClassReader.readClass(Resources.toByteArray(url));
@@ -186,7 +220,8 @@ public class Main extends SimpleMain<Main.Options, Exception> {
 
     @Override
     public int run(OptionsResults<Options> o) throws Exception {
-        Parser p = new Parser();
+        Stats stats = new Stats();
+        Parser p = new Parser(stats);
         for(String check : o.get(Options.checks)) {
             p.check(check);
         }
@@ -223,7 +258,6 @@ public class Main extends SimpleMain<Main.Options, Exception> {
         List<String> whitelistTo = o.get(Options.whitelistTo);
         final ImmutableSet<Pair<String, Member>> provides = p.providesBuilder.build();
         final ImmutableMultimap<String, String> immediateSupers = p.immediateSupersBuilder.build();
-        int errors = p.errors;
         for(Triple<String, String, Member> t : p.usesBuilder.build()) {
             String from = t.getLeft();
             String to = t.getMiddle();
@@ -246,25 +280,22 @@ public class Main extends SimpleMain<Main.Options, Exception> {
                     return false;
                 }
             }
+            ++stats.refs;
             if(matchesWhitelist(whitelistFrom, from)) {
+                ++stats.whitelists;
                 continue;
             }
             if(matchesWhitelist(whitelistTo, to)) {
+                ++stats.whitelists;
                 continue;
             }
             if(!new Finder().find(to, member)) {
                 System.out.println(from + " uses " + member + " in " + to + " which is not present!");
-                ++errors;
+                ++stats.errors;
             }
         }
-        if(errors > 0) {
-            System.out.println("Link checking complete with " + errors + " errors.");
-            return 1;
-        }
-        else {
-            System.out.println("Link checking complete without errors.");
-            return 0;
-        }
+        System.out.println("Link checking complete: " + stats);
+        return stats.exitCode();
     }
 
     private static boolean matchesWhitelist(List<String> whitelist, String element) {
