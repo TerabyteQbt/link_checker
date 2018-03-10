@@ -11,6 +11,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
@@ -23,6 +25,7 @@ import misc1.commons.options.OptionsResults;
 import misc1.commons.options.SimpleMain;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
+import qbt.QbtUtils;
 
 public class Main extends SimpleMain<Main.Options, Exception> {
     public static interface Options {
@@ -31,7 +34,7 @@ public class Main extends SimpleMain<Main.Options, Exception> {
         public static final OptionsFragment<Options, ImmutableList<String>> libs = o.oneArg("lib").helpDesc("Parse this jar/class as a required library but do not check it");
         public static final OptionsFragment<Options, ImmutableList<String>> whitelistFrom = o.oneArg("whitelistFrom").helpDesc("Whitelist calls from this prefix");
         public static final OptionsFragment<Options, ImmutableList<String>> whitelistTo = o.oneArg("whitelistTo").helpDesc("Whitelist calls to this prefix");
-        public static final OptionsFragment<Options, Boolean> qbtDefaults = o.zeroArg("qbtDefaults").transform(o.flag()).helpDesc("Configure check and lib from QBT artifacts directories");
+        public static final OptionsFragment<Options, ImmutableList<String>> qbtDefaults = o.oneArg("qbtDefaults").helpDesc("Configure check and lib from QBT artifacts directories");
         public static final OptionsFragment<Options, ?> help = simpleHelpOption();
     }
 
@@ -228,26 +231,22 @@ public class Main extends SimpleMain<Main.Options, Exception> {
         for(String lib : o.get(Options.libs)) {
             p.lib(lib);
         }
-        if(o.get(Options.qbtDefaults)) {
-            for(File packageDir : new File(System.getenv("INPUT_ARTIFACTS_DIR"), "strong").listFiles()) {
-                if(packageDir.getName().startsWith(".")) {
+        for(String pkg : o.get(Options.qbtDefaults)) {
+            Path root = Paths.get(System.getenv("INPUT_ARTIFACTS_DIR")).resolve("weak").resolve(pkg);
+            for(Path packageDir : QbtUtils.listChildren(root.resolve("strong"))) {
+                Path jarsDir = packageDir.resolve("jars");
+                if(!jarsDir.toFile().isDirectory()) {
                     continue;
                 }
-                File jarsDir = new File(packageDir, "jars");
-                if(!jarsDir.isDirectory()) {
-                    continue;
-                }
-                for(File jar : jarsDir.listFiles()) {
-                    if(jar.isFile() && jar.getName().endsWith(".jar")) {
-                        p.lib(jar.getPath());
-                    }
-                }
-            }
-            File jarsDir = new File(System.getenv("OUTPUT_ARTIFACTS_DIR"), "jars");
-            if(jarsDir.isDirectory()) {
-                for(File jar : jarsDir.listFiles()) {
-                    if(jar.isFile() && jar.getName().endsWith(".jar")) {
-                        p.check(jar.getPath());
+                for(Path jar : QbtUtils.listChildren(jarsDir)) {
+                    String jarString = jar.toString();
+                    if(jar.toFile().isFile() && jarString.endsWith(".jar")) {
+                        if(packageDir.getFileName().toString().equals(pkg)) {
+                            p.check(jarString);
+                        }
+                        else {
+                            p.lib(jarString);
+                        }
                     }
                 }
             }
