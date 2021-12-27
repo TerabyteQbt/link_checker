@@ -18,7 +18,7 @@ public abstract class ClassReaderHelper {
         for(String ifaceName : cr.getInterfaces()) {
             onInherits(classNameSlashed, ifaceName);
         }
-        ClassVisitor cv = new ClassVisitor(Opcodes.ASM6) {
+        ClassVisitor cv = new ClassVisitor(Opcodes.ASM9) {
             private String ownerFromDesc(String desc) {
                 Type descType = Type.getType(desc);
                 if(descType.getSort() != Type.OBJECT) {
