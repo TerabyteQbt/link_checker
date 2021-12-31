@@ -191,11 +191,13 @@ public class Main extends SimpleMain<Main.Options, Exception> {
                 found.add(clazz);
 
                 if(clazz.startsWith("[")) {
+                    System.out.println("ZZZ: Found class '" + clazz + "' provides/inherrits");
                     libClassReader.onProvides(clazz, Member.self());
                     libClassReader.onInherits(clazz, "java/lang/Object");
                 }
                 else {
                     String resource = clazz + ".class";
+                    System.out.println("ZZZ: Found class '" + clazz + "' needs to be read");
                     final URL url = ClassLoader.getSystemClassLoader().getResource(resource);
                     if(url == null) {
                         // Well, this sucks.  Unfortunately if this was from
@@ -218,6 +220,8 @@ public class Main extends SimpleMain<Main.Options, Exception> {
     }
 
     public static void main(String[] args) throws Exception {
+        final URL url = ClassLoader.getSystemClassLoader().getResource("java/lang/Throwable.class");
+        System.out.println("java/lang/Throwable.class resolved to: " + url);
         new Main().exec(args);
     }
 
@@ -293,7 +297,20 @@ public class Main extends SimpleMain<Main.Options, Exception> {
                 ++stats.errors;
             }
         }
+        for(Pair<String,Member> it : provides) {
+            //System.out.println("Pair is: " + it);
+            if(it.getLeft().startsWith("java/lang/Throwable")) {
+                System.out.println("Throwable Member: " + it.getRight());
+            }
+        }
+        // look for supers?
+        for(String it : immediateSupers.get("java/lang/Throwable")) {
+            System.out.println("Supers for Throwable: " + it);
+        }
+
         System.out.println("Link checking complete: " + stats);
+        final URL url = ClassLoader.getSystemClassLoader().getResource("java/lang/Throwable.class");
+        System.out.println("java/lang/Throwable.class resolved to: " + url);
         return stats.exitCode();
     }
 
